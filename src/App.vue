@@ -210,7 +210,7 @@ const toggleFullscreen = () => {
 
 
   <!-- 弹窗 -->
-  <a-modal v-model:open="setting" width="600px" title="设置" :footer="null">
+  <a-modal v-model:open="setting" width="600px" title="设置" centered :footer="null">
 
     <a-space direction="vertical" :size="10">
 
