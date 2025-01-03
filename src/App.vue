@@ -76,26 +76,22 @@ const subjects = ref([ //科目列表
 const subject = ref('物理')
 const setting = ref(false);
 const range = ref([]) //考试时间范围
+const examDuration = ref(0) // 添加考试时长变量
+const remainTime = ref('') // 添加回 remainTime 的定义
 const format0 = timecho => {
   return timecho = Math.floor(timecho * 0.001) * 1000 //将时间戳的毫秒数变为0
 }
 
-const duration = computed(() => {     //考试时长
-  if (range.value.length === 0) { return 0 } else {
-    let start = format0(range.value[0].valueOf())
-    let end = format0(range.value[1].valueOf())
-    return Math.floor((end - start) / 60000)
+const remind15 = ref(false) // 15分钟提醒开关
 
-  }
-})
+const audio15 = new Audio('./audio/2.mp3')
+audio15.preload = 'auto'
+audio15.load()
 
-const remainTime = ref('')
-
-const getRemainTime = () => { 
-
+const getRemainTime = () => {
   let nowT = Date.now()
   let begin = format0(dayjs(range.value[0]).valueOf())
-  let end = format0(dayjs(range.value[1]).valueOf())
+  let end = begin + examDuration.value * 60000 // 使用开始时间加上时长计算结束时间
 
   let beginDiff = begin - nowT + 1000
   if (beginDiff > 0) {
@@ -122,6 +118,11 @@ const getRemainTime = () => {
     let hour = Math.floor(diff / 3600000)
     let minute = Math.floor((diff - hour * 3600000) / 60000)
     let second = Math.floor((diff - hour * 3600000 - minute * 60000) / 1000)
+    
+    if (remind15.value && minute === 15 && second === 0 && hour === 0) {
+      audio15.play()
+    }
+
     if (hour > 0) {
       remainTime.value = `考试剩余时间：${hour} 小时 ${minute} 分 ${second} 秒`
     } else if (minute > 0) {
@@ -142,10 +143,12 @@ const now = ref(dayjs())
 
 onMounted(() => {
   const timer = setInterval(() => {
-
     now.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
-    if (range.value.length > 0) { getRemainTime() } else { remainTime.value = '请设置考试时间' }
-
+    if (range.value[0] && examDuration.value > 0) {
+      getRemainTime()
+    } else {
+      remainTime.value = '请设置考试时间'
+    }
   }, 1000)
 })
 
@@ -171,10 +174,10 @@ const toggleFullscreen = () => {
 
 
     <div class="info">
-      <span style="margin-right: 30px;">考试科目：{{ subject }} </span> <span v-if="range.length > 0">考试时间：{{
-        range[0].format('HH:mm') }} - {{ range[1].format('HH:mm')
-  }}，共 {{ duration }} 分钟</span>
-    </div>
+  <span style="margin-right: 30px;">考试科目：{{ subject }} </span> 
+  <span v-if="range.length > 0">考试时间：{{
+    range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{ examDuration }} 分钟</span>
+</div>
     <div class="currentTime">
       当前时间：{{ now }}
 
@@ -213,30 +216,42 @@ const toggleFullscreen = () => {
   <a-modal v-model:open="setting" width="600px" title="设置" centered :footer="null">
 
     <a-space direction="vertical" :size="10">
-
-
       <a-space :size="3">
-
         <span>设置科目：</span>
         <a-select ref="select" v-model:value="subject" style="width: 120px" :options="subjects"
           placeholder="选择科目"></a-select>
-
-
       </a-space>
-      <a-space :size="3">
-        <span>设置结束时间：</span>
-        <!-- <a-date-picker v-model:value="deadline" show-time placeholder="设置结束时间" format="YYYY-MM-DD HH:mm" /> -->
-        <a-range-picker v-model:value="range" format="YYYY-MM-DD HH:mm:ss" :placeholder="['开始时间', '结束时间']" show-time />
 
+      <a-space :size="20">
+        <a-space :size="3">
+          <span>开始时间：</span>
+          <a-date-picker 
+            v-model:value="range[0]" 
+            :show-time="{ format: 'HH:mm' }"
+            placeholder="设置开始时间" 
+            format="YYYY-MM-DD HH:mm"
+            @change="time => range.value = [dayjs(time).second(0)]"
+          />
+        </a-space>
+
+        <a-space :size="3">
+          <span>考试时长：</span>
+          <a-input-number v-model:value="examDuration" :min="1" :max="360" placeholder="请输入考试时长" />
+          <span>分钟</span>
+        </a-space>
       </a-space>
+
       <a-space :size="10">
-
-        <span> 开考铃声：</span><a-switch v-model:checked="beginAudio" /><span>结束铃声：</span> <a-switch
-          v-model:checked="endAudio" />
-
+        <span>开考铃声：</span>
+        <a-switch v-model:checked="beginAudio" />
+        <span>结束铃声：</span>
+        <a-switch v-model:checked="endAudio" />
       </a-space>
 
-
+      <a-space :size="10">
+        <span>15分钟提醒：</span>
+        <a-switch v-model:checked="remind15" />
+      </a-space>
     </a-space>
   </a-modal>
 </template>
