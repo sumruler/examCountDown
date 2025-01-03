@@ -135,7 +135,6 @@ const getRemainTime = () => {
   }
 }
 
-
 const now = ref(dayjs())
 
 
@@ -230,7 +229,7 @@ const toggleFullscreen = () => {
             :show-time="{ format: 'HH:mm' }"
             placeholder="设置开始时间" 
             format="YYYY-MM-DD HH:mm"
-            @change="time => range.value = [dayjs(time).second(0)]"
+           @change="(time) => range[0] = time.set('second', 0)"
           />
         </a-space>
 
