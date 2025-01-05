@@ -89,9 +89,9 @@ audio15.preload = 'auto'
 audio15.load()
 
 const getRemainTime = () => {
-  let nowT = Date.now()
+  let nowT = useNetworkTime.value ? networkTime.value.valueOf()+1000 : Date.now()
   let begin = format0(dayjs(range.value[0]).valueOf())
-  let end = begin + examDuration.value * 60000 // 使用开始时间加上时长计算结束时间
+  let end = begin + examDuration.value * 60000
 
   let beginDiff = begin - nowT + 1000
   if (beginDiff > 0) {
@@ -131,7 +131,6 @@ const getRemainTime = () => {
       remainTime.value = `考试剩余时间：${second} 秒`
       if (second === 0 && endAudio.value) { audio.play() }
     }
-
   }
 }
 
