@@ -137,12 +137,41 @@ const getRemainTime = () => {
 
 const now = ref(dayjs())
 
+// 添加网络校时的状态
+const useNetworkTime = ref(false)
+const networkTime = ref(null)
 
+// 修改获取网络时间的函数
+const fetchNetworkTime = async () => {
+  try {
+    const response = await fetch('https://quan.suning.com/getSysTime.do')
+    const data = await response.json()
+    // 直接创建 dayjs 对象，不要给 networkTime.value 赋值数字
+    networkTime.value = dayjs(data.sysTime2)
+  } catch (error) {
+    console.error('获取网络时间失败:', error)
+    networkTime.value = dayjs()
+  }
+}
 
-
+// 修改定时器中的时间更新逻辑
 onMounted(() => {
-  const timer = setInterval(() => {
-    now.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
+  let lastFetchTime = 0
+  const timer = setInterval(async () => {
+    if (useNetworkTime.value) {
+      const currentTime = Date.now()
+      if (currentTime - lastFetchTime >= 60000 || !networkTime.value) {
+        await fetchNetworkTime()
+        lastFetchTime = currentTime
+      } else {
+        // 使用 add 方法创建新的 dayjs 对象
+        networkTime.value = dayjs(networkTime.value).add(1, 'second')
+      }
+      now.value = networkTime.value.format('YYYY-MM-DD HH:mm:ss')
+    } else {
+      now.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
+    }
+    
     if (range.value[0] && examDuration.value > 0) {
       getRemainTime()
     } else {
@@ -165,11 +194,20 @@ const toggleFullscreen = () => {
   }
 }
 
+// 添加主题色相关的状态
+const themeColor = ref('#00a6ff') // 默认蓝色
+const presetColors = [
+  '#00a6ff', // 蓝色
+  '#002E8A', // 深蓝色
+  '#292929', // 深灰色
+  '#02694F', // 墨绿色
+  '#DB8080', // 暗粉色
+]
 
 </script>
 
 <template>
-  <div class="body">
+  <div class="body" :style="{ backgroundColor: themeColor }">
 
 
     <div class="info">
@@ -251,6 +289,39 @@ const toggleFullscreen = () => {
         <span>15分钟提醒：</span>
         <a-switch v-model:checked="remind15" />
       </a-space>
+
+      <a-space :size="10">
+        <span>使用网络时间（需联网）：</span>
+        <a-switch v-model:checked="useNetworkTime" />
+      </a-space>
+
+      <a-space direction="vertical" :size="5">
+        <span>主题颜色：</span>
+        <a-space :size="8">
+          <!-- 预设颜色按钮 -->
+          <template v-for="color in presetColors" :key="color">
+            <div
+              class="color-block"
+              :style="{ backgroundColor: color }"
+              :class="{ active: themeColor === color }"
+              @click="themeColor = color"
+            ></div>
+          </template>
+          <!-- 替换为原生颜色选择器 -->
+          <div class="color-picker-wrapper">
+            <input 
+              type="color" 
+              v-model="themeColor"
+              class="color-picker"
+            >
+            <div 
+              class="color-block"
+              :style="{ backgroundColor: themeColor }"
+            ></div>
+          </div>
+        </a-space>
+      </a-space>
+
     </a-space>
   </a-modal>
 </template>
@@ -321,5 +392,41 @@ const toggleFullscreen = () => {
   /* Firefox */
   -ms-user-select: none;
   /* IE10+ */
+}
+
+/* 添加颜色块的样式 */
+.color-block {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
+.color-block:hover {
+  transform: scale(1.1);
+}
+
+.color-block.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #1890ff;
+}
+
+.color-picker-wrapper {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.color-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 </style>
