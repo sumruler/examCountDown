@@ -89,37 +89,45 @@ audio15.preload = 'auto'
 audio15.load()
 
 const getRemainTime = () => {
-  let nowT = useNetworkTime.value ? networkTime.value.valueOf()+1000 : Date.now()
+  let nowT = useNetworkTime.value
+    ? networkTime.value.valueOf()
+    : Math.floor(Date.now() / 1000) * 1000
+
   let begin = format0(dayjs(range.value[0]).valueOf())
   let end = begin + examDuration.value * 60000
 
-  let beginDiff = begin - nowT + 1000
+  let beginDiff = begin - nowT
+
+  if (beginDiff === 0 && beginAudio.value) {
+    audio.play()
+  }
   if (beginDiff > 0) {
     let hour = Math.floor(beginDiff / 3600000)
     let minute = Math.floor((beginDiff - hour * 3600000) / 60000)
     let second = Math.floor((beginDiff - hour * 3600000 - minute * 60000) / 1000)
     if (hour > 0) {
       remainTime.value = `距离开考还有：${hour} 小时 ${minute} 分 ${second} 秒`
-      return
     } else if (minute > 0) {
       remainTime.value = `距离开考还有：${minute} 分 ${second} 秒`
-      return
     } else {
       remainTime.value = `距离开考还有：${second} 秒`
-      if (second === 0 && beginAudio.value) { audio.play() }
-      return
     }
+    return
   }
 
-  let diff = end - nowT + 1000
+  let diff = end - nowT
+
+  if (diff === 0 && endAudio.value) {
+    audio.play()
+  }
   if (diff <= 0) {
     remainTime.value = '考试结束！'
   } else {
     let hour = Math.floor(diff / 3600000)
     let minute = Math.floor((diff - hour * 3600000) / 60000)
     let second = Math.floor((diff - hour * 3600000 - minute * 60000) / 1000)
-    
-    if (remind15.value && minute === 15 && second === 0 && hour === 0) {
+
+    if (remind15.value && diff === 15 * 60000) {
       audio15.play()
     }
 
@@ -129,18 +137,17 @@ const getRemainTime = () => {
       remainTime.value = `考试剩余时间：${minute} 分 ${second} 秒`
     } else {
       remainTime.value = `考试剩余时间：${second} 秒`
-      if (second === 0 && endAudio.value) { audio.play() }
     }
   }
 }
 
 const now = ref(dayjs())
 
-// 添加网络校时的状态
+// 网络校时的状态
 const useNetworkTime = ref(false)
 const networkTime = ref(null)
 
-// 修改获取网络时间的函数
+// 获取网络时间
 const fetchNetworkTime = async () => {
   try {
     const response = await fetch('https://quan.suning.com/getSysTime.do')
@@ -170,7 +177,7 @@ onMounted(() => {
     } else {
       now.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
     }
-    
+
     if (range.value[0] && examDuration.value > 0) {
       getRemainTime()
     } else {
@@ -210,10 +217,11 @@ const presetColors = [
 
 
     <div class="info">
-  <span style="margin-right: 30px;">考试科目：{{ subject }} </span> 
-  <span v-if="range.length > 0">考试时间：{{
-    range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{ examDuration }} 分钟</span>
-</div>
+      <span style="margin-right: 30px;">考试科目：{{ subject }} </span>
+      <span v-if="range.length > 0">考试时间：{{
+        range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{
+          examDuration }} 分钟</span>
+    </div>
     <div class="currentTime">
       当前时间：{{ now }}
 
@@ -261,13 +269,8 @@ const presetColors = [
       <a-space :size="20">
         <a-space :size="3">
           <span>开始时间：</span>
-          <a-date-picker 
-            v-model:value="range[0]" 
-            :show-time="{ format: 'HH:mm' }"
-            placeholder="设置开始时间" 
-            format="YYYY-MM-DD HH:mm"
-           @change="(time) => range[0] = time.set('second', 0)"
-          />
+          <a-date-picker v-model:value="range[0]" :show-time="{ format: 'HH:mm' }" placeholder="设置开始时间"
+            format="YYYY-MM-DD HH:mm" @change="(time) => range[0] = time.set('second', 0)" />
         </a-space>
 
         <a-space :size="3">
@@ -299,24 +302,13 @@ const presetColors = [
         <a-space :size="8">
           <!-- 预设颜色按钮 -->
           <template v-for="color in presetColors" :key="color">
-            <div
-              class="color-block"
-              :style="{ backgroundColor: color }"
-              :class="{ active: themeColor === color }"
-              @click="themeColor = color"
-            ></div>
+            <div class="color-block" :style="{ backgroundColor: color }" :class="{ active: themeColor === color }"
+              @click="themeColor = color"></div>
           </template>
           <!-- 替换为原生颜色选择器 -->
           <div class="color-picker-wrapper">
-            <input 
-              type="color" 
-              v-model="themeColor"
-              class="color-picker"
-            >
-            <div 
-              class="color-block"
-              :style="{ backgroundColor: themeColor }"
-            ></div>
+            <input type="color" v-model="themeColor" class="color-picker">
+            <div class="color-block" :style="{ backgroundColor: themeColor }"></div>
           </div>
         </a-space>
       </a-space>
