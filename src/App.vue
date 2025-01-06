@@ -314,7 +314,7 @@ const showRemainTime = ref(true) // 控制剩余时间显示
            transform: remainTimePosition === 'center' ? 'translate(-50%, -50%)' : 'translateY(-50%)',
            left: remainTimePosition === 'center' ? '50%' : (remainTimePosition === 'left' ? '30px' : 'auto')
          }">
-      {{ remainTime }}
+      <span class="no-wrap">{{ remainTime }}</span>
     </div>
 
 
@@ -483,13 +483,13 @@ const showRemainTime = ref(true) // 控制剩余时间显示
                 <a-slider
                   v-model:value="remainTimeFontSize"
                   :min="60"
-                  :max="200"
+                  :max="150"
                   style="width: 150px"
                 />
                 <a-input-number
                   v-model:value="remainTimeFontSize"
                   :min="60"
-                  :max="200"
+                  :max="150"
                   style="width: 60px"
                 />
               </a-space>
