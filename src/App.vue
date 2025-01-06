@@ -120,6 +120,7 @@ const getRemainTime = () => {
   if (diff === 0 && endAudio.value) {
     audio.play()
   }
+  
   if (diff <= 0) {
     remainTime.value = '考试结束！'
   } else {
@@ -194,9 +195,14 @@ const toggleFullscreen = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen()
     isFullscreen.value = true
+    // 进入全屏时启动隐藏计时器
+    handleUserActivity()
   } else {
     document.exitFullscreen()
     isFullscreen.value = false
+    // 退出全屏时清除计时器并显示按钮
+    clearTimeout(hideTimeout)
+    buttonsVisible.value = true
   }
 }
 
@@ -210,23 +216,104 @@ const presetColors = [
   '#DB8080', // 暗粉色
 ]
 
+// 添加按钮显示状态控制
+const buttonsVisible = ref(true)
+let hideTimeout = null
+
+// 处理用户操作，重置隐藏计时器
+const handleUserActivity = () => {
+  if (!isFullscreen.value) return
+  
+  buttonsVisible.value = true
+  clearTimeout(hideTimeout)
+  
+  hideTimeout = setTimeout(() => {
+    buttonsVisible.value = false
+  }, 3000)
+}
+
+// 在组件挂载时添加事件监听
+onMounted(() => {
+  // ... 现有的 onMounted 代码 ...
+  
+  document.addEventListener('mousemove', handleUserActivity)
+  document.addEventListener('click', handleUserActivity)
+  document.addEventListener('keydown', handleUserActivity)
+})
+
+// 添加字体大小和位置设置
+const infoFontSize = ref(45) // 考试信息字体大小
+const currentTimeFontSize = ref(70) // 当前时间字体大小
+const infoPosition = ref('left') // 考试信息位置
+const currentTimePosition = ref('left') // 当前时间位置
+
+// 位置选项
+const positionOptions = [
+  { value: 'left', label: '居左' },
+  { value: 'center', label: '居中' },
+  { value: 'right', label: '居右' },
+]
+
+// 添加显示控制开关
+const showInfo = ref(true) // 控制考试信息显示
+const showCurrentTime = ref(true) // 控制当前时间显示
+
+// 添加剩余时间的显示设置
+const remainTimeFontSize = ref(90) // 剩余时间字体大小
+const remainTimePosition = ref('center') // 剩余时间位置
+
+// 添加剩余时间显示控制
+const showRemainTime = ref(true) // 控制剩余时间显示
 </script>
 
 <template>
-  <div class="body" :style="{ backgroundColor: themeColor }">
+  <div class="body" 
+       :style="{ backgroundColor: themeColor }"
+       @mousemove="handleUserActivity"
+       @click="handleUserActivity"
+       @keydown="handleUserActivity">
 
 
-    <div class="info">
-      <span style="margin-right: 30px;">考试科目：{{ subject }} </span>
-      <span v-if="range.length > 0">考试时间：{{
-        range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{
-          examDuration }} 分钟</span>
+    <div class="info" 
+         v-show="showInfo"
+         :style="{ 
+           fontSize: `${infoFontSize}px`,
+           left: infoPosition === 'left' ? '30px' : 'auto',
+           right: infoPosition === 'right' ? '30px' : 'auto',
+           textAlign: infoPosition,
+           transform: infoPosition === 'center' ? 'translateX(-50%)' : 'none',
+           left: infoPosition === 'center' ? '50%' : (infoPosition === 'left' ? '30px' : 'auto')
+         }">
+      <span class="info-content">
+        <span class="no-wrap">考试科目：{{ subject }}</span>
+        <span v-if="range.length > 0" class="no-wrap">考试时间：{{
+          range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{
+            examDuration }} 分钟</span>
+      </span>
     </div>
-    <div class="currentTime">
-      当前时间：{{ now }}
-
+    <div class="currentTime"
+         v-show="showCurrentTime"
+         :style="{ 
+           fontSize: `${currentTimeFontSize}px`,
+           left: currentTimePosition === 'left' ? '30px' : 'auto',
+           right: currentTimePosition === 'right' ? '30px' : 'auto',
+           textAlign: currentTimePosition,
+           transform: currentTimePosition === 'center' ? 'translateX(-50%)' : 'none',
+           left: currentTimePosition === 'center' ? '50%' : (currentTimePosition === 'left' ? '30px' : 'auto'),
+           top: `${showInfo ? (30 + infoFontSize + 10) : 30}px` // 根据 info 是否显示调整位置
+         }">
+      <span class="no-wrap">当前时间：{{ now }}</span>
     </div>
-    <div class="remainTime">
+    <div class="remainTime"
+         v-show="showRemainTime"
+         :style="{ 
+           fontSize: `${remainTimeFontSize}px`,
+           textAlign: remainTimePosition,
+           left: remainTimePosition === 'left' ? '30px' : 'auto',
+           right: remainTimePosition === 'right' ? '30px' : 'auto',
+           transform: remainTimePosition === 'center' ? 'translate(-50%, -50%)' : 'translateY(-50%)',
+           left: remainTimePosition === 'center' ? '50%' : (remainTimePosition === 'left' ? '30px' : 'auto')
+         }">
       {{ remainTime }}
     </div>
 
@@ -236,7 +323,7 @@ const presetColors = [
 
 
 
-    <div class="setting">
+    <div class="setting" :class="{ 'buttons-hidden': !buttonsVisible }">
       <a-button shape="circle" size="large" @click="setting = true">
         <template #icon>
           <SettingOutlined />
@@ -244,10 +331,9 @@ const presetColors = [
       </a-button>
     </div>
 
-    <div class="fullSccreen">
+    <div class="fullSccreen" :class="{ 'buttons-hidden': !buttonsVisible }">
       <a-button shape="circle" size="large" @click="toggleFullscreen">
         <template #icon>
-
           <FullscreenExitOutlined v-if="isFullscreen" />
           <FullscreenOutlined v-else />
         </template>
@@ -257,63 +343,169 @@ const presetColors = [
 
 
   <!-- 弹窗 -->
-  <a-modal v-model:open="setting" width="600px" title="设置" centered :footer="null">
+  <a-modal v-model:open="setting" width="550px" title="设置" centered :footer="null">
+    <a-tabs>
+      <!-- 常规设置选项卡 -->
+      <a-tab-pane key="1" tab="常规设置">
+        <a-space direction="vertical" :size="10">
+          <a-space :size="3">
+            <span>设置科目：</span>
+            <a-select ref="select" v-model:value="subject" style="width: 120px" :options="subjects"
+              placeholder="选择科目"></a-select>
+          </a-space>
 
-    <a-space direction="vertical" :size="10">
-      <a-space :size="3">
-        <span>设置科目：</span>
-        <a-select ref="select" v-model:value="subject" style="width: 120px" :options="subjects"
-          placeholder="选择科目"></a-select>
-      </a-space>
+          <a-space :size="20">
+            <a-space :size="3">
+              <span>开始时间：</span>
+              <a-date-picker v-model:value="range[0]" :show-time="{ format: 'HH:mm' }" placeholder="设置开始时间"
+                format="YYYY-MM-DD HH:mm" @change="(time) => range[0] = time.set('second', 0)" />
+            </a-space>
 
-      <a-space :size="20">
-        <a-space :size="3">
-          <span>开始时间：</span>
-          <a-date-picker v-model:value="range[0]" :show-time="{ format: 'HH:mm' }" placeholder="设置开始时间"
-            format="YYYY-MM-DD HH:mm" @change="(time) => range[0] = time.set('second', 0)" />
+            <a-space :size="3">
+              <span>考试时长：</span>
+              <a-input-number v-model:value="examDuration" :min="1" :max="360" placeholder="请输入考试时长" />
+              <span>分钟</span>
+            </a-space>
+          </a-space>
+
+          <a-space :size="10">
+            <span>开考铃声：</span>
+            <a-switch v-model:checked="beginAudio" />
+            <span>结束铃声：</span>
+            <a-switch v-model:checked="endAudio" />
+          </a-space>
+
+          <a-space :size="10">
+            <span>15分钟提醒：</span>
+            <a-switch v-model:checked="remind15" />
+          </a-space>
+
+          <a-space :size="10">
+            <span>使用网络时间（需联网）：</span>
+            <a-switch v-model:checked="useNetworkTime" />
+          </a-space>
+
+          <a-space direction="vertical" :size="5">
+            <span>主题颜色：</span>
+            <a-space :size="8">
+              <template v-for="color in presetColors" :key="color">
+                <div class="color-block" :style="{ backgroundColor: color }" 
+                     :class="{ active: themeColor === color }"
+                     @click="themeColor = color"></div>
+              </template>
+              <div class="color-picker-wrapper">
+                <input type="color" v-model="themeColor" class="color-picker">
+                <div class="color-block" :style="{ backgroundColor: themeColor }"></div>
+              </div>
+            </a-space>
+          </a-space>
         </a-space>
+      </a-tab-pane>
 
-        <a-space :size="3">
-          <span>考试时长：</span>
-          <a-input-number v-model:value="examDuration" :min="1" :max="360" placeholder="请输入考试时长" />
-          <span>分钟</span>
+      <!-- 显示设置选项卡 -->
+      <a-tab-pane key="2" tab="显示设置">
+        <a-space direction="vertical" :size="10">
+          <!-- 考试信息设置 -->
+          <a-space direction="vertical" :size="5">
+            <a-space :size="20">
+              <span>考试信息：</span>
+              <a-switch v-model:checked="showInfo" />
+            </a-space>
+            <a-space :size="20" v-show="showInfo">
+              <a-space>
+                <span>字体大小：</span>
+                <a-slider
+                  v-model:value="infoFontSize"
+                  :min="30"
+                  :max="100"
+                  style="width: 150px"
+                />
+                <a-input-number
+                  v-model:value="infoFontSize"
+                  :min="30"
+                  :max="100"
+                  style="width: 60px"
+                />
+              </a-space>
+              <a-space>
+                <span>位置：</span>
+                <a-select
+                  v-model:value="infoPosition"
+                  style="width: 100px"
+                  :options="positionOptions"
+                />
+              </a-space>
+            </a-space>
+          </a-space>
+
+          <!-- 当前时间设置 -->
+          <a-space direction="vertical" :size="5">
+            <a-space :size="20">
+              <span>当前时间：</span>
+              <a-switch v-model:checked="showCurrentTime" />
+            </a-space>
+            <a-space :size="20" v-show="showCurrentTime">
+              <a-space>
+                <span>字体大小：</span>
+                <a-slider
+                  v-model:value="currentTimeFontSize"
+                  :min="30"
+                  :max="100"
+                  style="width: 150px"
+                />
+                <a-input-number
+                  v-model:value="currentTimeFontSize"
+                  :min="30"
+                  :max="100"
+                  style="width: 60px"
+                />
+              </a-space>
+              <a-space>
+                <span>位置：</span>
+                <a-select
+                  v-model:value="currentTimePosition"
+                  style="width: 100px"
+                  :options="positionOptions"
+                />
+              </a-space>
+            </a-space>
+          </a-space>
+
+          <!-- 剩余时间设置 -->
+          <a-space direction="vertical" :size="5">
+            <a-space :size="20">
+              <span>剩余时间：</span>
+              <a-switch v-model:checked="showRemainTime" />
+            </a-space>
+            <a-space :size="20" v-show="showRemainTime">
+              <a-space>
+                <span>字体大小：</span>
+                <a-slider
+                  v-model:value="remainTimeFontSize"
+                  :min="60"
+                  :max="200"
+                  style="width: 150px"
+                />
+                <a-input-number
+                  v-model:value="remainTimeFontSize"
+                  :min="60"
+                  :max="200"
+                  style="width: 60px"
+                />
+              </a-space>
+              <a-space>
+                <span>位置：</span>
+                <a-select
+                  v-model:value="remainTimePosition"
+                  style="width: 100px"
+                  :options="positionOptions"
+                />
+              </a-space>
+            </a-space>
+          </a-space>
         </a-space>
-      </a-space>
-
-      <a-space :size="10">
-        <span>开考铃声：</span>
-        <a-switch v-model:checked="beginAudio" />
-        <span>结束铃声：</span>
-        <a-switch v-model:checked="endAudio" />
-      </a-space>
-
-      <a-space :size="10">
-        <span>15分钟提醒：</span>
-        <a-switch v-model:checked="remind15" />
-      </a-space>
-
-      <a-space :size="10">
-        <span>使用网络时间（需联网）：</span>
-        <a-switch v-model:checked="useNetworkTime" />
-      </a-space>
-
-      <a-space direction="vertical" :size="5">
-        <span>主题颜色：</span>
-        <a-space :size="8">
-          <!-- 预设颜色按钮 -->
-          <template v-for="color in presetColors" :key="color">
-            <div class="color-block" :style="{ backgroundColor: color }" :class="{ active: themeColor === color }"
-              @click="themeColor = color"></div>
-          </template>
-          <!-- 替换为原生颜色选择器 -->
-          <div class="color-picker-wrapper">
-            <input type="color" v-model="themeColor" class="color-picker">
-            <div class="color-block" :style="{ backgroundColor: themeColor }"></div>
-          </div>
-        </a-space>
-      </a-space>
-
-    </a-space>
+      </a-tab-pane>
+    </a-tabs>
   </a-modal>
 </template>
 
@@ -342,47 +534,42 @@ const presetColors = [
 .info {
   position: absolute;
   top: 30px;
-  left: 30px;
-  font-size: 40px;
   color: #fff;
   font-weight: bold;
   text-shadow: 0 0 10px #b8b8b8;
   -webkit-user-select: none;
-  /* Chrome/Safari */
   -moz-user-select: none;
-  /* Firefox */
   -ms-user-select: none;
-  /* IE10+ */
+  width: fit-content;
+}
 
+.info-content {
+  display: flex;
+  gap: 30px; /* 替代之前的 margin-right */
 }
 
 .currentTime {
   position: absolute;
-  top: 80px;
-  left: 30px;
-  font-size: 70px;
   color: #fff;
   font-weight: bold;
   text-shadow: 0 0 10px #b8b8b8;
   -webkit-user-select: none;
-  /* Chrome/Safari */
   -moz-user-select: none;
-  /* Firefox */
   -ms-user-select: none;
-  /* IE10+ */
+  width: fit-content;
 }
 
 .remainTime {
-  font-size: 90px;
+  position: absolute;
   color: #fff;
   font-weight: bold;
   text-shadow: 0 0 10px #b8b8b8;
   -webkit-user-select: none;
-  /* Chrome/Safari */
   -moz-user-select: none;
-  /* Firefox */
   -ms-user-select: none;
-  /* IE10+ */
+  top: 50%; /* 垂直居中 */
+  width: fit-content;
+  min-width: 100px; /* 添加最小宽度确保文本居中效果 */
 }
 
 /* 添加颜色块的样式 */
@@ -419,5 +606,23 @@ const presetColors = [
   height: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+.setting,
+.fullSccreen {
+  transition: opacity 0.5s ease;
+  opacity: 1;
+}
+
+.buttons-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 添加防止换行的样式 */
+.no-wrap {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
