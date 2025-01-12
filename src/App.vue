@@ -505,6 +505,43 @@ const showRemainTime = ref(true) // 控制剩余时间显示
           </a-space>
         </a-space>
       </a-tab-pane>
+
+      <!-- 添加关于标签页 -->
+      <a-tab-pane key="3" tab="关于">
+        <a-card :bordered="false" style="background: transparent">
+          <template #cover>
+            <div style="text-align: center; ">
+              <img 
+                src="/qrcode.png" 
+                alt="微信公众号二维码" 
+                style="width: 200px; height: 200px; border-radius: 8px;"
+              >
+            </div>
+          </template>
+          <a-card-meta>
+            <template #title>
+              <div style="text-align: center; font-size: 18px; margin-bottom: 16px;">
+                考试倒计时工具
+              </div>
+            </template>
+            <template #description>
+              <a-space direction="vertical" style="width: 100%">
+                <div style="text-align: center; color: rgba(0, 0, 0, 0.65);">
+                  <p style="margin: 8px 0;">工具制作：老龙</p>
+                  <p style="margin: 8px 0;">微信公众号：物理猫</p>
+                  <a 
+                    href="https://github.com/sumruler/examCountDown" 
+                    target="_blank"
+                    style="color: #1890ff; text-decoration: none;"
+                  >
+                    项目开源地址：GitHub
+                  </a>
+                </div>
+              </a-space>
+            </template>
+          </a-card-meta>
+        </a-card>
+      </a-tab-pane>
     </a-tabs>
   </a-modal>
 </template>
