@@ -264,6 +264,15 @@ const remainTimePosition = ref('center') // 剩余时间位置
 
 // 添加剩余时间显示控制
 const showRemainTime = ref(true) // 控制剩余时间显示
+
+// 添加自定义科目相关的状态
+const customSubjectEnabled = ref(false) // 自定义科目开关
+const customSubject = ref('') // 自定义科目输入值
+
+// 计算属性：根据是否启用自定义科目返回最终显示的科目
+const displaySubject = computed(() => {
+  return customSubjectEnabled.value ? customSubject.value : subject.value
+})
 </script>
 
 <template>
@@ -285,7 +294,7 @@ const showRemainTime = ref(true) // 控制剩余时间显示
            left: infoPosition === 'center' ? '50%' : (infoPosition === 'left' ? '30px' : 'auto')
          }">
       <span class="info-content">
-        <span class="no-wrap">考试科目：{{ subject }}</span>
+        <span class="no-wrap">考试科目：{{ displaySubject }}</span>
         <span v-if="range.length > 0" class="no-wrap">考试时间：{{
           range[0].format('HH:mm') }} - {{ dayjs(range[0]).add(examDuration, 'minutes').format('HH:mm') }}，共 {{
             examDuration }} 分钟</span>
@@ -350,8 +359,28 @@ const showRemainTime = ref(true) // 控制剩余时间显示
         <a-space direction="vertical" :size="10">
           <a-space :size="3">
             <span>设置科目：</span>
-            <a-select ref="select" v-model:value="subject" style="width: 120px" :options="subjects"
-              placeholder="选择科目"></a-select>
+            <a-select 
+              ref="select" 
+              v-model:value="subject" 
+              style="width: 120px" 
+              :options="subjects"
+              :disabled="customSubjectEnabled"
+              placeholder="选择科目"
+            ></a-select>
+            <a-switch 
+              v-model:checked="customSubjectEnabled"
+              id="custom-subject-toggle"
+              checked-children="自定义"
+              un-checked-children="预设"
+            />
+          </a-space>
+          <a-space :size="3" v-if="customSubjectEnabled" style="margin-top: 10px">
+            <span>自定义科目：</span>
+            <a-input 
+              v-model:value="customSubject"
+              placeholder="请输入科目名称"
+              style="width: 200px"
+            />
           </a-space>
 
           <a-space :size="20">
@@ -661,5 +690,16 @@ const showRemainTime = ref(true) // 控制剩余时间显示
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 添加样式以确保UI的整体美观性 */
+#custom-subject-toggle {
+  margin-left: 10px;
+}
+input[type="text"] {
+  margin-left: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px;
 }
 </style>
