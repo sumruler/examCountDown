@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { SettingOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons-vue';
 import dayjs from "dayjs";
+import { message } from 'ant-design-vue';
 
 dayjs.locale('zh-cn')
 
@@ -239,6 +240,13 @@ onMounted(() => {
   document.addEventListener('mousemove', handleUserActivity)
   document.addEventListener('click', handleUserActivity)
   document.addEventListener('keydown', handleUserActivity)
+  
+  // 添加URL参数处理
+  const urlParams = new URLSearchParams(window.location.search);
+  const encoded = urlParams.get('s');
+  if (encoded) {
+    decodeSettings(encoded);
+  }
 })
 
 // 添加字体大小和位置设置
@@ -273,6 +281,108 @@ const customSubject = ref('') // 自定义科目输入值
 const displaySubject = computed(() => {
   return customSubjectEnabled.value ? customSubject.value : subject.value
 })
+
+// 修改 encodeSettings 函数
+const encodeSettings = () => {
+  try {
+    // 将设置转换为数组格式，按固定顺序排列
+    const settings = [
+      customSubjectEnabled.value ? customSubject.value : subject.value, // [0] 科目
+      range.value[0] ? range.value[0].format('YYMMDDHHmm') : '', // [1] 开始时间，使用更紧凑的格式
+      examDuration.value || 0, // [2] 考试时长
+      // 将布尔值打包成一个数字，每个位表示一个开关
+      (beginAudio.value ? 1 : 0) |
+      (endAudio.value ? 2 : 0) |
+      (remind15.value ? 4 : 0) |
+      (useNetworkTime.value ? 8 : 0) |
+      (customSubjectEnabled.value ? 16 : 0)
+    ];
+    
+    // 过滤掉空值和0值，进一步缩短URL
+    const compactSettings = settings.map(v => v || '').join(',');
+    return btoa(encodeURIComponent(compactSettings));
+  } catch (error) {
+    console.error('编码设置失败:', error);
+    return '';
+  }
+};
+
+// 修改 decodeSettings 函数
+const decodeSettings = (encoded) => {
+  try {
+    const decoded = decodeURIComponent(atob(encoded));
+    const settings = decoded.split(',');
+    
+    // 解析科目
+    if (settings[0]) {
+      // 检查是否是预设科目
+      const isPresetSubject = subjects.value.some(s => s.value === settings[0]);
+      customSubjectEnabled.value = !isPresetSubject;
+      if (isPresetSubject) {
+        subject.value = settings[0];
+        customSubject.value = '';
+      } else {
+        customSubject.value = settings[0];
+        subject.value = subjects.value[0].value; // 设置默认科目
+      }
+    }
+
+    // 解析时间
+    if (settings[1]) {
+      const timeStr = settings[1];
+      try {
+        const year = '20' + timeStr.slice(0, 2);
+        const month = timeStr.slice(2, 4);
+        const day = timeStr.slice(4, 6);
+        const hour = timeStr.slice(6, 8);
+        const minute = timeStr.slice(8, 10);
+        range.value = [dayjs(`${year}-${month}-${day} ${hour}:${minute}`)];
+      } catch (e) {
+        console.error('时间格式解析失败');
+      }
+    }
+
+    // 解析考试时长
+    if (settings[2]) {
+      examDuration.value = parseInt(settings[2]) || 0;
+    }
+
+    // 解析开关状态
+    if (settings[3]) {
+      const flags = parseInt(settings[3]);
+      beginAudio.value = !!(flags & 1);
+      endAudio.value = !!(flags & 2);
+      remind15.value = !!(flags & 4);
+      useNetworkTime.value = !!(flags & 8);
+      customSubjectEnabled.value = !!(flags & 16);
+    }
+  } catch (error) {
+    console.error('解析设置失败:', error);
+    // 设置默认值
+    subject.value = subjects.value[0].value;
+    customSubjectEnabled.value = false;
+    customSubject.value = '';
+    range.value = [];
+    examDuration.value = 0;
+    beginAudio.value = false;
+    endAudio.value = false;
+    remind15.value = false;
+    useNetworkTime.value = false;
+    message.error('链接格式错误，已重置为默认设置');
+  }
+};
+
+// 复制当前设置的链接
+const copySettingsLink = () => {
+  const encoded = encodeSettings();
+  // const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
+  const url = `https://t.phycat.cn?s=${encoded}`; // 使用物理猫的短网址
+  navigator.clipboard.writeText(url).then(() => {
+    message.success('链接已复制到剪贴板');
+  }).catch(() => {
+    message.error('复制失败，请手动复制');
+  });
+};
 </script>
 
 <template>
@@ -428,6 +538,11 @@ const displaySubject = computed(() => {
               </div>
             </a-space>
           </a-space>
+
+          <!-- 添加复制链接按钮 -->
+          <a-button type="primary" @click="copySettingsLink">
+            复制当前设置链接
+          </a-button>
         </a-space>
       </a-tab-pane>
 
